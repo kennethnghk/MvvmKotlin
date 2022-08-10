@@ -5,7 +5,6 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ListView
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
@@ -18,7 +17,7 @@ class ListFragment : Fragment() {
     private lateinit var viewModel: ListViewModel
     private val listAdapter = AnimalListAdapter(arrayListOf())
 
-    private val animalListDataObserver = Observer<List<Animal>> { list ->
+    private val animalLiveDataObserver = Observer<List<Animal>> { list ->
         // list? means if list is not null, then implement
         list?.let {
             animalList.visibility = View.VISIBLE
@@ -50,7 +49,7 @@ class ListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         viewModel = ViewModelProvider(this)[ListViewModel::class.java]
-        viewModel.animals.observe(viewLifecycleOwner, animalListDataObserver)
+        viewModel.animals.observe(viewLifecycleOwner, animalLiveDataObserver)
         viewModel.isloading.observe(viewLifecycleOwner, isLoadingLiveDataObserver)
         viewModel.loadError.observe(viewLifecycleOwner, errorLiveDataObserver)
         viewModel.refresh()
