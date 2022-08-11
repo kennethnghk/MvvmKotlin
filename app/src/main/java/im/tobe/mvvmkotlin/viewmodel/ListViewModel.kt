@@ -4,6 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import im.tobe.mvvmkotlin.model.Animal
+import im.tobe.mvvmkotlin.model.AnimalApiService
+import im.tobe.mvvmkotlin.model.ApiKey
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.CompositeDisposable
+import io.reactivex.rxjava3.observers.DisposableSingleObserver
+import io.reactivex.rxjava3.schedulers.Schedulers
 
 // google does not recommend passing context into viewmodel
 class ListViewModel(application: Application): AndroidViewModel(application) {
@@ -11,21 +17,67 @@ class ListViewModel(application: Application): AndroidViewModel(application) {
     val loadError by lazy { MutableLiveData<Boolean>() }
     val isloading by lazy { MutableLiveData<Boolean>() }
 
+    private val disposable = CompositeDisposable()
+    private val apiService = AnimalApiService()
+
     fun refresh() {
-        // mock data now
-        getAnimals()
+        isloading.value = true
+        getKey()
     }
 
-    private fun getAnimals() {
-        val a1 = Animal("tiger")
-        val a2 = Animal("dog")
-        val a3 = Animal("cat")
-        val a4 = Animal("panda")
-        val a5 = Animal("bear")
+    private fun getKey() {
+        disposable.add(
+            apiService.getApiKey()
+                .subscribeOn(Schedulers.newThread()) // put to background thread
+                .observeOn(AndroidSchedulers.mainThread()) // when the api returns, return the result to main thread
+                .subscribeWith(object: DisposableSingleObserver<ApiKey>(){ // get the information
+                    override fun onSuccess(key: ApiKey) {
+                        if (key.key.isNullOrEmpty()) {
+                            loadError.value = true
+                            isloading.value = false
+                        } else {
+                            getAnimals(key.key)
+                        }
+                    }
 
-        val animalList : ArrayList<Animal> = arrayListOf(a1, a2, a3, a4, a5)
-        animals.value = animalList
-        loadError.value = false
-        isloading.value = false
+                    override fun onError(e: Throwable) {
+                        e.printStackTrace()
+                        isloading.value = false
+                        loadError.value = true
+                    }
+
+                })
+        )
+    }
+
+    private fun getAnimals(key : String) {
+
+        disposable.add(
+            apiService.getAnimals(key)
+                .subscribeOn(Schedulers.newThread()) // put to background thread
+                .observeOn(AndroidSchedulers.mainThread()) // when the api returns, return the result to main thread
+                .subscribeWith(object: DisposableSingleObserver<List<Animal>>(){ // get the information
+                    override fun onSuccess(list: List<Animal>) {
+                        loadError.value = false
+                        isloading.value = false
+                        animals.value = list
+                    }
+
+                    override fun onError(e: Throwable) {
+                        e.printStackTrace()
+                        loadError.value = true
+                        isloading.value = false
+                        animals.value = null
+                    }
+                })
+        )
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+
+        // before the viewmodel is destroyed, there still rxjava link (Single observable) which may lead to data leak.
+        // therefore need to dispose it.
+        disposable.clear()
     }
 }
