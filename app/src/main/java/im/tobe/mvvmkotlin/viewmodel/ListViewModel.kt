@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import im.tobe.mvvmkotlin.model.Animal
 import im.tobe.mvvmkotlin.model.AnimalApiService
 import im.tobe.mvvmkotlin.model.ApiKey
+import im.tobe.mvvmkotlin.util.SharedPreferencesHelper
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.observers.DisposableSingleObserver
@@ -20,9 +21,18 @@ class ListViewModel(application: Application): AndroidViewModel(application) {
     private val disposable = CompositeDisposable()
     private val apiService = AnimalApiService()
 
+    private val prefs = SharedPreferencesHelper(getApplication())
+    private var invalidApiKey = false
+
     fun refresh() {
         isloading.value = true
-        getKey()
+        invalidApiKey = false
+        val key = prefs.getApiKey()
+        if (key.isNullOrEmpty()) {
+            getKey()
+        } else {
+            getAnimals(key)
+        }
     }
 
     private fun getKey() {
@@ -36,14 +46,20 @@ class ListViewModel(application: Application): AndroidViewModel(application) {
                             loadError.value = true
                             isloading.value = false
                         } else {
+                            prefs.saveApiKey(key.key)
                             getAnimals(key.key)
                         }
                     }
 
                     override fun onError(e: Throwable) {
-                        e.printStackTrace()
-                        isloading.value = false
-                        loadError.value = true
+                        if (!invalidApiKey) {
+                            invalidApiKey = true
+                            getKey()
+                        } else {
+                            e.printStackTrace()
+                            isloading.value = false
+                            loadError.value = true
+                        }
                     }
 
                 })
@@ -65,6 +81,7 @@ class ListViewModel(application: Application): AndroidViewModel(application) {
 
                     override fun onError(e: Throwable) {
                         e.printStackTrace()
+
                         loadError.value = true
                         isloading.value = false
                         animals.value = null
