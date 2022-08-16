@@ -3,6 +3,7 @@ package im.tobe.mvvmkotlin.view
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.navigation.Navigation
 import androidx.recyclerview.widget.RecyclerView
 import im.tobe.mvvmkotlin.R
 import im.tobe.mvvmkotlin.model.Animal
@@ -24,6 +25,11 @@ class AnimalListAdapter(private val animalList: ArrayList<Animal>): RecyclerView
         holder.view.animalName.text = animalList[position].name
         holder.view.animalImage.loadImage(animalList[position].imageUrl,
             getProgressDrawable(holder.view.context))
+
+        holder.view.animalItemLayout.setOnClickListener {
+            val action = ListFragmentDirections.actionListFragmentToDetailFragment(animalList[position])
+            Navigation.findNavController(it).navigate(action)
+        }
     }
 
     override fun getItemCount() = animalList.size
